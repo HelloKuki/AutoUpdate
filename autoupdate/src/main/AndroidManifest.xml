@@ -1,2 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.hellokiki.autoupdate" />
+    package="com.hellokiki.autoupdate">
+
+    <application>
+        <provider
+            android:name=".UpdateContentProvider"
+            android:authorities="${applicationId}.UpdateContentProvider" />
+    </application>
+
+</manifest>

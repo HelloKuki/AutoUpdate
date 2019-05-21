@@ -25,18 +25,21 @@ public class DownloadAsyncTask extends AsyncTask<Void, Long, String> {
 
     @Override
     protected void onPostExecute(String s) {
+        DownloadManager.getInstance().setToDownload(false);
         File file = new File(s);
         if (mDownloadListener != null) {
             if (file.exists() && file.length() > 0) {
-                mDownloadListener.downloadFinish(false, s);
+                mDownloadListener.downloadFinish(true, s);
             } else {
-                mDownloadListener.downloadFinish(false, "");
+                mDownloadListener.downloadFinish(false, s);
             }
         }
     }
 
     @Override
     protected String doInBackground(Void... voids) {
+        DownloadManager.getInstance().setToDownload(true);
+        mDownloadListener.downloadStart(mDownloadUrl);
         InputStream inputStream = null;
         FileOutputStream outputStream = null;
         String fileName = mSavePath + "/updateApp" + System.currentTimeMillis() + ".apk";
@@ -48,8 +51,8 @@ public class DownloadAsyncTask extends AsyncTask<Void, Long, String> {
             int fileSize = connection.getContentLength();
             inputStream = connection.getInputStream();
             File file = new File(fileName);
-            if (!file.exists()) {
-                file.mkdirs();
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
             }
             outputStream = new FileOutputStream(file);
             byte[] buffer = new byte[1024];
@@ -75,8 +78,6 @@ public class DownloadAsyncTask extends AsyncTask<Void, Long, String> {
                 e.printStackTrace();
             }
         }
-
-
         return fileName;
     }
 

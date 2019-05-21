@@ -2,6 +2,10 @@ package com.hellokiki.autoupdate.bean;
 
 public class Apkinfo {
 
+    public static final int UPDATE_TYPE_TIPS = 1;
+    public static final int UPDATE_TYPE_MANDATORY = 2;
+    public static final int UPDATE_TYPE_SILENT = 3;
+
     private String name;
 
     private String packageName;
