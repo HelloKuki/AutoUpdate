@@ -1,5 +1,8 @@
 package com.hellokiki.autoupdate;
 
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -22,7 +25,10 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
 
     private CheckUpdateListener mUpdateListener;
 
-    public CheckUpdateAsyncTask(CheckUpdateListener updateListener) {
+    private long mCurrentVersionCode;
+
+    public CheckUpdateAsyncTask(long currentVersionCode, CheckUpdateListener updateListener) {
+        mCurrentVersionCode = currentVersionCode;
         mUpdateListener = updateListener;
     }
 
@@ -42,7 +48,9 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
                     apkinfo.setUrl(jsonObject.getJSONObject("data").getString("download_url"));
                     apkinfo.setVersionCode(jsonObject.getJSONObject("data").getString("version_code"));
                     apkinfo.setVersionName(jsonObject.getJSONObject("data").getString("version_name"));
-                    mUpdateListener.checkSuccess(apkinfo);
+                    apkinfo.setProgressNotifyType(jsonObject.getJSONObject("data").getInt("progress_notify_type"));
+
+                    mUpdateListener.checkSuccess(apkinfo, Long.parseLong(apkinfo.getVersionCode()) > mCurrentVersionCode);
                 } else {
                     mUpdateListener.checkFail(s);
                 }

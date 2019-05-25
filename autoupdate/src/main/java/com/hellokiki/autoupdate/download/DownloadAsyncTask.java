@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class DownloadAsyncTask extends AsyncTask<Void, Long, String> {
+public class DownloadAsyncTask extends AsyncTask<Void, Integer, String> {
 
     private DownloadListener mDownloadListener;
 
@@ -61,7 +61,7 @@ public class DownloadAsyncTask extends AsyncTask<Void, Long, String> {
             while ((len = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, len);
                 sum += len;
-                publishProgress(sum * 100 / fileSize);
+                publishProgress((int) (sum * 100 / fileSize));
             }
             outputStream.flush();
             connection.disconnect();
@@ -82,7 +82,7 @@ public class DownloadAsyncTask extends AsyncTask<Void, Long, String> {
     }
 
     @Override
-    protected void onProgressUpdate(Long... values) {
+    protected void onProgressUpdate(Integer... values) {
         if (mDownloadListener != null) {
             mDownloadListener.downloadProgress(values[0]);
         }

@@ -4,7 +4,7 @@ public interface DownloadListener {
 
     void downloadStart(String url);
 
-    void downloadProgress(Long progress);
+    void downloadProgress(Integer progress);
 
     void downloadFinish(boolean result, String filePath);
 

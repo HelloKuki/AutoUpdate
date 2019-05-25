@@ -13,8 +13,10 @@ public class DownloadManager {
     }
 
     public void downloadApk(String url, DownloadListener listener) {
-        DownloadAsyncTask asyncTask = new DownloadAsyncTask(listener, url, UpdateManager.getInstance().getSavePath());
-        asyncTask.execute();
+        if (!isToDownload()) {
+            DownloadAsyncTask asyncTask = new DownloadAsyncTask(listener, url, UpdateManager.getInstance().getSavePath());
+            asyncTask.execute();
+        }
     }
 
     public boolean isToDownload() {

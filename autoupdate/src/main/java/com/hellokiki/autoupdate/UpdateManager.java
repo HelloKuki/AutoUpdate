@@ -2,6 +2,10 @@ package com.hellokiki.autoupdate;
 
 import android.app.Activity;
 import android.app.Application;
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -22,6 +26,10 @@ public class UpdateManager {
 
     private Activity mCurrentActivity = null;
 
+    private CheckUpdateAsyncTask mCheckUpdateAsyncTask;
+
+    private UpdateTipDialog mUpdateTipDialog;
+
     public static UpdateManager getInstance() {
         return sManager;
     }
@@ -29,6 +37,7 @@ public class UpdateManager {
     private UpdateManager() {
         mSavePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/APKUPDATE";
         Log.e("2018", "save path = " + mSavePath);
+        mUpdateTipDialog = new UpdateTipDialog();
     }
 
     public UpdateManager setSavePath(String savePath) {
@@ -85,39 +94,75 @@ public class UpdateManager {
     }
 
     public void checkUpdate() {
-        CheckUpdateAsyncTask asyncTask = new CheckUpdateAsyncTask(new CheckUpdateListener() {
-            @Override
-            public void checkSuccess(Apkinfo apkinfo) {
-                UpdateTipDialog dialog = new UpdateTipDialog();
-                dialog.setApkinfo(apkinfo);
-                dialog.show(mCurrentActivity.getFragmentManager(), "UpdateTipDialog");
-            }
-
-            @Override
-            public void checkFail(String error) {
-                Toast.makeText(mCurrentActivity,"查询更新失败",Toast.LENGTH_SHORT).show();
-            }
-        });
-        asyncTask.execute();
+        checkUpdate(new InnerCheckUpdateListener());
     }
 
+    public void checkUpdate(CheckUpdateListener listener) {
+        if (mCheckUpdateAsyncTask != null) {
+            return;
+        }
+        PackageManager pm = mCurrentActivity.getPackageManager();
+        try {
+            PackageInfo packageInfo = pm.getPackageInfo(mCurrentActivity.getPackageName(), PackageManager.GET_ACTIVITIES);
+            long currentVersionCode;
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                currentVersionCode = packageInfo.getLongVersionCode();
+            } else {
+                currentVersionCode = packageInfo.versionCode;
+            }
+            mCheckUpdateAsyncTask = new CheckUpdateAsyncTask(currentVersionCode, listener);
+            mCheckUpdateAsyncTask.execute();
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
     public void startDownloadApk(String url) {
-        DownloadManager.getInstance().downloadApk(url, new DownloadListener() {
-            @Override
-            public void downloadStart(String url) {
-                Log.e("2018", "downloadStart = " + url);
-            }
+        startDownloadApk(url, new InnerDownloadListener());
+    }
 
-            @Override
-            public void downloadProgress(Long progress) {
-                Log.e("2018", "progress = " + progress);
-            }
+    public void startDownloadApk(String url, DownloadListener listener) {
+        DownloadManager.getInstance().downloadApk(url, listener);
+    }
 
-            @Override
-            public void downloadFinish(boolean result, String filePath) {
-                Log.e("2018", "finish = " + result + "     filePath = " + filePath);
+    private class InnerCheckUpdateListener implements CheckUpdateListener {
+
+        @Override
+        public void checkSuccess(Apkinfo apkinfo, boolean isNeedUpdate) {
+            mCheckUpdateAsyncTask = null;
+            if (isNeedUpdate) {
+                mUpdateTipDialog.setApkinfo(apkinfo);
+                mUpdateTipDialog.show(mCurrentActivity.getFragmentManager(), "UpdateTipDialog");
             }
-        });
+        }
+
+        @Override
+        public void checkFail(String error) {
+            mCheckUpdateAsyncTask = null;
+            Toast.makeText(mCurrentActivity, "查询更新失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private class InnerDownloadListener implements DownloadListener {
+
+        @Override
+        public void downloadStart(String url) {
+            Log.e("2018", "downloadStart = " + url);
+        }
+
+        @Override
+        public void downloadProgress(Integer progress) {
+            Log.e("2018", "progress = " + progress);
+            mUpdateTipDialog.setProgress(progress);
+        }
+
+        @Override
+        public void downloadFinish(boolean result, String filePath) {
+            Log.e("2018", "finish = " + result + "     filePath = " + filePath);
+            mUpdateTipDialog.dismiss();
+        }
     }
 
 
