@@ -11,11 +11,11 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 public class UpdateContentProvider extends ContentProvider {
+
     @Override
     public boolean onCreate() {
         UpdateManager.getInstance().setApplicationLife((Application) getContext());
-        Log.e("2018", "UpdateContentProvider = ");
-        return true;
+        return false;
     }
 
     @Nullable

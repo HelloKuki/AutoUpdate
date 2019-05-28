@@ -2,19 +2,26 @@ package com.hellokiki.autoupdate;
 
 import android.app.Activity;
 import android.app.Application;
-import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.hellokiki.autoupdate.bean.Apkinfo;
+import com.hellokiki.autoupdate.dialog.BaseUpdateDialog;
 import com.hellokiki.autoupdate.dialog.UpdateTipDialog;
 import com.hellokiki.autoupdate.download.DownloadListener;
 import com.hellokiki.autoupdate.download.DownloadManager;
+import com.hellokiki.autoupdate.utils.ApkUtils;
+import com.hellokiki.autoupdate.utils.NetWorkUtils;
+
+import java.io.File;
 
 public class UpdateManager {
 
@@ -28,7 +35,13 @@ public class UpdateManager {
 
     private CheckUpdateAsyncTask mCheckUpdateAsyncTask;
 
-    private UpdateTipDialog mUpdateTipDialog;
+    private BaseUpdateDialog mUpdateTipDialog;
+
+    private String mUrl = "http://192.168.23.217:8899/apk/checkUpdate";
+
+    private int mNotifyType = Apkinfo.PROGRESS_TYPE_DIALOG;
+
+    private DownloadListener mDownloadListener;
 
     public static UpdateManager getInstance() {
         return sManager;
@@ -38,6 +51,7 @@ public class UpdateManager {
         mSavePath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/APKUPDATE";
         Log.e("2018", "save path = " + mSavePath);
         mUpdateTipDialog = new UpdateTipDialog();
+        mDownloadListener = new InnerDownloadListener();
     }
 
     public UpdateManager setSavePath(String savePath) {
@@ -49,16 +63,34 @@ public class UpdateManager {
         return mSavePath;
     }
 
+    public UpdateManager setUrl(String url) {
+        mUrl = url;
+        return sManager;
+    }
+
     public UpdateManager setDeleteApk(boolean isDeleteApk) {
         mDeleteApk = isDeleteApk;
         return sManager;
     }
 
+    public UpdateManager setDownloadListener(DownloadListener downloadListener) {
+        mDownloadListener = downloadListener;
+        return sManager;
+    }
+
+    public UpdateManager setUpdateDialog(BaseUpdateDialog updateDialog) {
+        mUpdateTipDialog = updateDialog;
+        return sManager;
+    }
+
+
     public void setApplicationLife(Application app) {
+        Log.e("2018update", "app");
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-
+                mCurrentActivity = activity;
+                Log.e("2018update", "onActivityCreated");
             }
 
             @Override
@@ -69,11 +101,13 @@ public class UpdateManager {
             @Override
             public void onActivityResumed(Activity activity) {
                 mCurrentActivity = activity;
+                Log.e("2018update", "onActivityResumed");
             }
 
             @Override
             public void onActivityPaused(Activity activity) {
                 mCurrentActivity = null;
+                Log.e("2018update", "onActivityPaused");
             }
 
             @Override
@@ -90,16 +124,32 @@ public class UpdateManager {
             public void onActivityDestroyed(Activity activity) {
 
             }
+
         });
     }
 
-    public void checkUpdate() {
-        checkUpdate(new InnerCheckUpdateListener());
+    private void deleteHistoryApk() {
+        if (!mDeleteApk) {
+            return;
+        }
+        File file = new File(mSavePath);
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            for (File file1 : files) {
+                file1.delete();
+            }
+        }
     }
 
-    public void checkUpdate(CheckUpdateListener listener) {
+    public UpdateManager checkUpdate() {
+        return checkUpdate(new InnerCheckUpdateListener());
+    }
+
+    public UpdateManager checkUpdate(CheckUpdateListener listener) {
+        deleteHistoryApk();
         if (mCheckUpdateAsyncTask != null) {
-            return;
+            Log.i("autoupdate", "check update request is running");
+            return sManager;
         }
         PackageManager pm = mCurrentActivity.getPackageManager();
         try {
@@ -110,31 +160,39 @@ public class UpdateManager {
             } else {
                 currentVersionCode = packageInfo.versionCode;
             }
-            mCheckUpdateAsyncTask = new CheckUpdateAsyncTask(currentVersionCode, listener);
+            mCheckUpdateAsyncTask = new CheckUpdateAsyncTask(mUrl, currentVersionCode, listener);
             mCheckUpdateAsyncTask.execute();
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
         }
-
+        return sManager;
     }
 
 
     public void startDownloadApk(String url) {
-        startDownloadApk(url, new InnerDownloadListener());
+        DownloadManager.getInstance().downloadApk(url, mDownloadListener);
     }
 
-    public void startDownloadApk(String url, DownloadListener listener) {
-        DownloadManager.getInstance().downloadApk(url, listener);
-    }
 
     private class InnerCheckUpdateListener implements CheckUpdateListener {
 
         @Override
         public void checkSuccess(Apkinfo apkinfo, boolean isNeedUpdate) {
+            Log.e("2018", apkinfo.toString());
+            Log.e("2018", isNeedUpdate + "");
             mCheckUpdateAsyncTask = null;
-            if (isNeedUpdate) {
-                mUpdateTipDialog.setApkinfo(apkinfo);
+            mNotifyType = apkinfo.getProgressNotifyType();
+            if (isNeedUpdate && apkinfo.getUpdateType() != Apkinfo.UPDATE_TYPE_WIFI) {
+                mUpdateTipDialog.setApkInfo(apkinfo);
                 mUpdateTipDialog.show(mCurrentActivity.getFragmentManager(), "UpdateTipDialog");
+            } else if (isNeedUpdate && apkinfo.getUpdateType() == Apkinfo.UPDATE_TYPE_WIFI) {
+                Log.e("2018", "wifi status = " + NetWorkUtils.isWifiConnect(mCurrentActivity));
+                if (NetWorkUtils.isWifiConnect(mCurrentActivity)) {
+                    startDownloadApk(apkinfo.getUrl());
+                } else {
+                    mUpdateTipDialog.setApkInfo(apkinfo);
+                    mUpdateTipDialog.show(mCurrentActivity.getFragmentManager(), "UpdateTipDialog");
+                }
             }
         }
 
@@ -150,18 +208,31 @@ public class UpdateManager {
         @Override
         public void downloadStart(String url) {
             Log.e("2018", "downloadStart = " + url);
+            if (mNotifyType == Apkinfo.PROGRESS_TYPE_NOTIFY) {
+                NotificationUpdateManager.getInstance().createNotification(mCurrentActivity);
+            }
         }
 
         @Override
         public void downloadProgress(Integer progress) {
             Log.e("2018", "progress = " + progress);
-            mUpdateTipDialog.setProgress(progress);
+            if (mNotifyType == Apkinfo.PROGRESS_TYPE_DIALOG) {
+                mUpdateTipDialog.setProgress(progress);
+            } else {
+                NotificationUpdateManager.getInstance().updateProgress(progress);
+            }
+
         }
 
         @Override
         public void downloadFinish(boolean result, String filePath) {
             Log.e("2018", "finish = " + result + "     filePath = " + filePath);
-            mUpdateTipDialog.dismiss();
+            if (mNotifyType == Apkinfo.PROGRESS_TYPE_DIALOG) {
+                mUpdateTipDialog.dismiss();
+            } else {
+                NotificationUpdateManager.getInstance().dismiss();
+            }
+            ApkUtils.installApk(mCurrentActivity, filePath);
         }
     }
 

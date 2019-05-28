@@ -27,7 +27,10 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
 
     private long mCurrentVersionCode;
 
-    public CheckUpdateAsyncTask(long currentVersionCode, CheckUpdateListener updateListener) {
+    private String mUrl;
+
+    public CheckUpdateAsyncTask(String url, long currentVersionCode, CheckUpdateListener updateListener) {
+        mUrl = url;
         mCurrentVersionCode = currentVersionCode;
         mUpdateListener = updateListener;
     }
@@ -67,7 +70,7 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
         ByteArrayOutputStream outputStream = null;
         try {
             Log.e("2018", "开始请求");
-            URL url = new URL("http://192.168.23.217:8888/apk/explainApk");
+            URL url = new URL(mUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(6000);
             connection.setReadTimeout(6000);
@@ -76,7 +79,7 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
             connection.setDoOutput(true);
 
             HashMap<String, String> map = new HashMap<>();
-            map.put("file_path", "./static/apk/android-1.2.7.apk");
+            map.put("app_key", "Y29tLmhlbGxva2lraS51cGRhdGVleGFt");
 
             Iterator iterator = map.keySet().iterator();
             StringBuilder builder = new StringBuilder();
