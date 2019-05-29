@@ -1,18 +1,22 @@
 package com.hellokiki.autoupdate.dialog;
 
+import android.app.FragmentManager;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
 import com.hellokiki.autoupdate.R;
 import com.hellokiki.autoupdate.bean.Apkinfo;
 
@@ -25,6 +29,8 @@ public class UpdateTipDialog extends BaseUpdateDialog implements View.OnClickLis
     private LinearLayout mLinearLayoutButton;
     private ProgressBar mProgressBar;
     private View mViewLine;
+    private TextView mButtonOk;
+    private TextView mButtonCancel;
 
     @Nullable
     @Override
@@ -41,12 +47,24 @@ public class UpdateTipDialog extends BaseUpdateDialog implements View.OnClickLis
 
         if (mApkInfo != null) {
             mTextViewContent = view.findViewById(R.id.tv_tip_content);
-            mTextViewContent.setText(mApkInfo.getUpdateContent());
-            view.findViewById(R.id.btn_update).setOnClickListener(this);
-            view.findViewById(R.id.btn_cancel).setOnClickListener(this);
+            String builder = "版本号：" +
+                    mApkInfo.getVersionName() +
+                    "\n" +
+                    "更新内容：" +
+                    mApkInfo.getUpdateContent();
+            mTextViewContent.setText(builder);
+            mButtonOk = view.findViewById(R.id.btn_update);
+            mButtonCancel = view.findViewById(R.id.btn_cancel);
+            mButtonOk.setOnClickListener(this);
+            mButtonCancel.setOnClickListener(this);
             if (mApkInfo.getUpdateType() == Apkinfo.UPDATE_TYPE_MANDATORY) {
-                view.findViewById(R.id.btn_cancel).setVisibility(View.GONE);
+                mButtonCancel.setVisibility(View.GONE);
+            } else if (mApkInfo.getUpdateType() == Apkinfo.UPDATE_TYPE_WIFI) {
+                mButtonCancel.setVisibility(View.GONE);
+                mButtonOk.setText("安装");
+                mTextViewTitle.setText("更新（已下载完成）");
             }
+
         }
         return view;
     }
@@ -58,7 +76,7 @@ public class UpdateTipDialog extends BaseUpdateDialog implements View.OnClickLis
     }
 
     @Override
-    public void showDownloadProgress() {
+    public void showDownloadProgressStatus() {
         mProgressBar.setVisibility(View.VISIBLE);
         mTextViewProgress.setVisibility(View.VISIBLE);
         mTextViewContent.setVisibility(View.GONE);

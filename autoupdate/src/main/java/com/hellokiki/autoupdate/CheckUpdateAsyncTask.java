@@ -1,8 +1,5 @@
 package com.hellokiki.autoupdate;
 
-import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -16,7 +13,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,20 +25,21 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
 
     private String mUrl;
 
-    public CheckUpdateAsyncTask(String url, long currentVersionCode, CheckUpdateListener updateListener) {
+    private HashMap<String, String> mMap;
+
+    private JsonParseListener mListener;
+
+    CheckUpdateAsyncTask(String url, HashMap<String, String> map, long currentVersionCode, CheckUpdateListener updateListener) {
         mUrl = url;
+        this.mMap = map;
         mCurrentVersionCode = currentVersionCode;
         mUpdateListener = updateListener;
-    }
-
-    @Override
-    protected void onPostExecute(String s) {
-        try {
-            if (mUpdateListener != null) {
-                Log.e("2018", "response = " + s);
-                JSONObject jsonObject = new JSONObject(s);
-                if (jsonObject.getInt("code") == 1000) {
-                    Apkinfo apkinfo = new Apkinfo();
+        mListener = new JsonParseListener() {
+            @Override
+            public Apkinfo parse(String json) {
+                Apkinfo apkinfo = new Apkinfo();
+                try {
+                    JSONObject jsonObject = new JSONObject(json);
                     apkinfo.setName(jsonObject.getJSONObject("data").getString("app_name"));
                     apkinfo.setMinSdkVersion(jsonObject.getJSONObject("data").getString("min_sdk_version"));
                     apkinfo.setPackageName(jsonObject.getJSONObject("data").getString("package_name"));
@@ -52,7 +49,40 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
                     apkinfo.setVersionCode(jsonObject.getJSONObject("data").getString("version_code"));
                     apkinfo.setVersionName(jsonObject.getJSONObject("data").getString("version_name"));
                     apkinfo.setProgressNotifyType(jsonObject.getJSONObject("data").getInt("progress_notify_type"));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                return apkinfo;
+            }
 
+            @Override
+            public boolean resultCodeIsTrue(String json) {
+                try {
+                    JSONObject jsonObject = new JSONObject(json);
+                    return jsonObject.getInt("code") == 1000;
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                return false;
+            }
+        };
+    }
+
+    CheckUpdateAsyncTask(String url, HashMap<String, String> map, long currentVersionCode, CheckUpdateListener updateListener, JsonParseListener jsonParseListener) {
+        mUrl = url;
+        this.mMap = map;
+        mCurrentVersionCode = currentVersionCode;
+        mUpdateListener = updateListener;
+        this.mListener = jsonParseListener;
+    }
+
+    @Override
+    protected void onPostExecute(String s) {
+        try {
+            if (mUpdateListener != null) {
+                Log.e("2018", "response = " + s);
+                if (mListener.resultCodeIsTrue(s)) {
+                    Apkinfo apkinfo = mListener.parse(s);
                     mUpdateListener.checkSuccess(apkinfo, Long.parseLong(apkinfo.getVersionCode()) > mCurrentVersionCode);
                 } else {
                     mUpdateListener.checkFail(s);
@@ -78,14 +108,11 @@ public class CheckUpdateAsyncTask extends AsyncTask<Void, Void, String> {
             connection.setRequestProperty("Charset", "UTF-8");
             connection.setDoOutput(true);
 
-            HashMap<String, String> map = new HashMap<>();
-            map.put("app_key", "Y29tLmhlbGxva2lraS51cGRhdGVleGFt");
-
-            Iterator iterator = map.keySet().iterator();
+            Iterator iterator = mMap.keySet().iterator();
             StringBuilder builder = new StringBuilder();
             while (iterator.hasNext()) {
                 String key = (String) iterator.next();
-                builder.append(key).append("=").append(map.get(key));
+                builder.append(key).append("=").append(mMap.get(key));
                 builder.append("&");
             }
 

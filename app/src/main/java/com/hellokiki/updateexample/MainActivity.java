@@ -14,34 +14,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        UpdateManager.getInstance().checkUpdate();
-
-        UpdateManager.getInstance().checkUpdate(new CheckUpdateListener() {
-            @Override
-            public void checkSuccess(Apkinfo apkinfo, boolean isNeedUpdate) {
-
-            }
-
-            @Override
-            public void checkFail(String error) {
-
-            }
-        }).setDownloadListener(new DownloadListener() {
-            @Override
-            public void downloadStart(String url) {
-
-            }
-
-            @Override
-            public void downloadProgress(Integer progress) {
-
-            }
-
-            @Override
-            public void downloadFinish(boolean result, String filePath) {
-
-            }
-        });
-
+        UpdateManager.getInstance()
+                .setUrl("http://192.168.23.217:8899/apk/checkUpdate")
+//                .setDeleteApk(false)
+                .checkUpdate();
     }
 }

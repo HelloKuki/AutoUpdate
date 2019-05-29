@@ -3,18 +3,25 @@ package com.hellokiki.autoupdate;
 import android.app.Application;
 import android.content.ContentProvider;
 import android.content.ContentValues;
-import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 public class UpdateContentProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        UpdateManager.getInstance().setApplicationLife((Application) getContext());
+        UpdateManager.getInstance().init((Application) getContext());
+        try {
+            ApplicationInfo applicationInfo = getContext().getPackageManager().getApplicationInfo(getContext().getPackageName(), PackageManager.GET_META_DATA);
+            String key = applicationInfo.metaData.getString("AUTO_UPDATE_APP_KEY");
+            UpdateManager.getInstance().setAppKey(key);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
         return false;
     }
 

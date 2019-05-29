@@ -10,8 +10,20 @@ public abstract class BaseUpdateDialog extends DialogFragment {
 
     protected Apkinfo mApkInfo;
 
+    private DialogEventListener mEventListener;
+
+    private String mFilePath;
+
     public void setApkInfo(Apkinfo info) {
         this.mApkInfo = info;
+    }
+
+    public Apkinfo getApkInfo() {
+        return mApkInfo;
+    }
+
+    public void setEventListener(DialogEventListener eventListener) {
+        mEventListener = eventListener;
     }
 
     /**
@@ -22,21 +34,26 @@ public abstract class BaseUpdateDialog extends DialogFragment {
     /**
      * 切换下载状态
      */
-    public abstract void showDownloadProgress();
+    public abstract void showDownloadProgressStatus();
+
+    /**
+     * 切换到安装apk状态（静默下载完成）
+     */
+    public void setInstallApk(String filePath) {
+        mFilePath = filePath;
+    }
+
 
     /**
      * 确定按钮点击事件
      */
     protected void updateButtonClick() {
-        if (mApkInfo != null) {
-            UpdateManager.getInstance().startDownloadApk(mApkInfo.getUrl());
-            if (mApkInfo.getProgressNotifyType() == Apkinfo.PROGRESS_TYPE_DIALOG) {
-                showDownloadProgress();
+        if (mEventListener != null) {
+            if (mApkInfo.getUpdateType() == Apkinfo.UPDATE_TYPE_WIFI) {
+                mEventListener.installApk(mFilePath);
             } else {
-                dismiss();
+                mEventListener.updateButtonClick(mApkInfo);
             }
-        } else {
-            dismiss();
         }
     }
 
@@ -44,7 +61,9 @@ public abstract class BaseUpdateDialog extends DialogFragment {
      * 取消按钮点击事件
      */
     protected void cancelButtonClick() {
-        dismiss();
+        if (mEventListener != null) {
+            mEventListener.cancelButtonClick();
+        }
     }
 
 }
